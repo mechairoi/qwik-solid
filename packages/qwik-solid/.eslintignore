@@ -1,0 +1,11 @@
+.history
+.vscode
+dist
+lib
+node_modules
+temp
+*.
+**/*.log
+**/.DS_Store
+*.tsbuildinfo
+vite.config.ts

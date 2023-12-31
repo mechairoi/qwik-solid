@@ -1,0 +1,32 @@
+# Keep "OS" and "IDE and local environment" ignores on your local machine in user home
+# git config --global core.excludesFile ~/.gitignore
+# https://git-scm.com/docs/gitignore
+
+# OS
+**/.DS_Store
+etc
+temp
+.history
+.lh
+*.
+**/*.log
+*.node
+
+# Application
+
+# Node
+node_modules
+
+# Artifacts
+dist
+lib
+
+# IDE and local environment
+.idea
+.eslintcache
+test-results
+
+# Package Managers
+.pnpm-store/*
+
+tsconfig.tsbuildinfo
