@@ -1,60 +1,70 @@
-# Qwik qwik-react ⚡️
+# qwik-solid ⚡️
 
-- Create a component library
-- Vite.js tooling.
-- Prettier code formatter.
+QwikSolid allows adding Solid components into existing Qwik application
 
-## Development Builds
+## How to Integrate into a Qwik app
 
-### Client only
+Integration is pretty much the same as <https://qwik.builder.io/docs/integrations/react/>.
 
-During development, the index.html is not a result of server-side rendering, but rather the Qwik app is built using client-side JavaScript only. This is ideal for development with Vite and its ability to reload modules quickly and on-demand. However, this mode is only for development and does not showcase "how" Qwik works since JavaScript is required to execute, and Vite imports many development modules for the app to work.
+First, install `@mechairoi/qwik-solid` with npm, pnpm or yarn. Instead of `react` and `react-dom`, you will need to install `solid-js` and `vite-plugin-solid`. And don't forgot `/** @jsxImportSource solid-js */`
 
-```
-npm run dev
-```
+solid.tsx
 
-### Server-side Rendering (SSR) and Client
+```tsx
+/** @jsxImportSource solid-js */
+import { qwikify$ } from '@qwikdev/qwik-solid';
+import { createSignal } from 'solid-js';
 
-Server-side rendered index.html, with client-side modules prefetched and loaded by the browser. This can be used to test out server-side rendered content during development, but will be slower than the client-only development builds.
+// Create Solid component standard way
+function Counter() {
+  const [count, setCount] = createSignal(0);
+  return (
+    <button onClick={() => setCount((count) => count + 1)}>
+      Count: {count}
+    </button>
+  );
+}
 
-```
-npm run dev.ssr
-```
-
-## Production Builds
-
-A production build should generate the client and server modules by running both client and server build commands.
-
-```
-npm run build
-```
-
-### Client Modules
-
-Production build that creates only the client-side modules that are dynamically imported by the browser.
-
-```
-npm run build.client
+// Convert Solid component to Qwik component
+export const QCounter = qwikify$(Counter, { eagerness: 'hover' });
 ```
 
-### Server Modules
+index.tsx
 
-Production build that creates the server-side render (SSR) module that is used by the server to render the HTML.
+```tsx
+import { component$ } from '@builder.io/qwik';
+import { QCounter } from './solid';
 
+export default component$(() => {
+  return (
+    <main>
+      <QCounter />
+    </main>
+  );
+});
 ```
-npm run build.server
+
+vite.config.ts
+
+```ts
+// vite.config.ts
+import { qwikSolid } from '@mechairoi/qwik-solid/vite';
+import { solid } from 'vite-plugin-solid';
+
+export default defineConfig(() => {
+   return {
+     ...,
+     plugins: [
+       // `vite-plugin-solid` must be placed before `qwikCity` and `qwikVite`
+       solid({ include:'./src/integrations/solid/**', ssr: true }),
+       qwikCity(),
+       qwikVite(),
+       qwikSolid(),
+     ],
+   };
+});
 ```
 
----
+Please keep in mind that this is an experimental implementation based on `qwik-react`. So, there might be bugs and unwanted behaviours.
 
-## Related
-
-- [Qwik Docs](https://qwik.builder.io/docs/)
-- [Qwik on GitHub](https://github.com/BuilderIO/qwik)
-- [@QwikDev](https://twitter.com/QwikDev)
-- [Discord](https://qwik.builder.io/chat)
-- [Vite](https://vitejs.dev/)
-- [Partytown](https://partytown.builder.io/)
-- [Mitosis](https://github.com/BuilderIO/mitosis)
-- [Builder.io](https://www.builder.io/)
+Thanks to https://github.com/BuilderIO/qwik/pull/2291, it has been incredibly helpful.
