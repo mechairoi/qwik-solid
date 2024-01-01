@@ -11,20 +11,19 @@ import {
   RenderOnce,
   useStylesScoped$,
 } from '@builder.io/qwik';
-
 import { isBrowser, isServer } from '@builder.io/qwik/build';
-import type { Root } from 'react-dom/client';
-import type { FunctionComponent } from 'react';
-import * as client from './client';
+import type { Component, JSX } from 'solid-js';
+import { createStore } from 'solid-js/store';
+import { hydrate, render } from 'solid-js/web';
 import { renderFromServer } from './server-render';
-import { getHostProps, main, mainExactProps, useWakeupSignal } from './slot';
+import { getHostProps, getSolidProps, mainExactProps, useWakeupSignal } from './slot';
 import type { Internal, QwikifyOptions, QwikifyProps } from './types';
 
 export function qwikifyQrl<PROPS extends {}>(
-  reactCmp$: QRL<FunctionComponent<PROPS & { children?: any }>>,
+  solidCmp$: QRL<Component<PROPS & { children?: JSX.Element }>>,
   opts?: QwikifyOptions
 ) {
-  return component$((props: QwikifyProps<PROPS>) => {
+  return component$<QwikifyProps<PROPS>>((props) => {
     const { scopeId } = useStylesScoped$(
       `q-slot{display:none} q-slotc,q-slotc>q-slot{display:contents}`
     );
@@ -33,7 +32,7 @@ export function qwikifyQrl<PROPS extends {}>(
     const internalState = useSignal<NoSerialize<Internal<PROPS>>>();
     const [signal, isClientOnly] = useWakeupSignal(props, opts);
     const hydrationKeys = {};
-    const TagName = opts?.tagName ?? ('qwik-react' as any);
+    const TagName = opts?.tagName ?? ('qwik-solid' as any);
 
     // Task takes cares of updates and partial hydration
     useTask$(async ({ track }) => {
@@ -46,34 +45,48 @@ export function qwikifyQrl<PROPS extends {}>(
 
       // Update
       if (internalState.value) {
-        if (internalState.value.root) {
-          internalState.value.root.render(
-            main(slotRef.value, scopeId, internalState.value.cmp, trackedProps)
-          );
+        if (internalState.value.dispose) {
+          internalState.value.setQwikifyProps(trackedProps);
         }
       } else {
-        let root: Root | undefined = undefined;
-        const Cmp = await reactCmp$.resolve();
+        let dispose: (() => void) | undefined = undefined;
+        const Cmp = await solidCmp$.resolve();
         const hostElement = hostRef.value;
+        const [wrappedProps, setProps] = createStore<PROPS>({} as PROPS);
+        const setQwikifyProps = (props: QwikifyProps<PROPS>) => setProps(getSolidProps(props));
+
         if (hostElement) {
           // hydration
           if (isClientOnly) {
-            root = client.createRoot(hostElement);
+            setQwikifyProps(trackedProps);
+            dispose = render(
+              () => mainExactProps(slotRef.value, scopeId, Cmp, wrappedProps),
+              hostElement
+            );
           } else {
-            root = client.flushSync(() => {
-              return client.hydrateRoot(
-                hostElement,
-                mainExactProps(slotRef.value, scopeId, Cmp, hydrationKeys)
-              );
-            });
+            setProps(hydrationKeys as PROPS);
+
+            // Prepare global object expected by Solid's hydration logic
+            if (!(globalThis as any)._$HY) {
+              (globalThis as any)._$HY = { events: [], completed: new WeakSet(), r: {} };
+            }
+
+            dispose = hydrate(
+              () => mainExactProps(slotRef.value, scopeId, Cmp, wrappedProps),
+              hostElement
+            );
           }
+
           if (isClientOnly || signal.value === false) {
-            root.render(main(slotRef.value, scopeId, Cmp, trackedProps));
+            setQwikifyProps(trackedProps);
           }
         }
+
         internalState.value = noSerialize({
           cmp: Cmp,
-          root,
+          dispose,
+          setQwikifyProps,
+          wrappedProps,
         });
       }
     });
@@ -81,33 +94,46 @@ export function qwikifyQrl<PROPS extends {}>(
     if (isServer && !isClientOnly) {
       const jsx = renderFromServer(
         TagName,
-        reactCmp$,
+        solidCmp$,
         scopeId,
         props,
         hostRef,
         slotRef,
         hydrationKeys
       );
-      return <RenderOnce key={2}>{jsx}</RenderOnce>;
+      return <RenderOnce>{jsx}</RenderOnce>;
     }
 
     return (
       <RenderOnce>
         <TagName
           {...getHostProps(props)}
-          ref={(el: Element) => {
-            if (isBrowser) {
-              queueMicrotask(() => {
-                const internalData = internalState.value;
-                if (internalData && !internalData.root) {
-                  const root = (internalData.root = client.createRoot(el));
-                  root.render(main(slotRef.value, scopeId, internalData.cmp, props));
-                }
-              });
-            } else {
-              hostRef.value = el;
-            }
-          }}
+          ref={
+            scopeId /* workaround to prevent _IMMUTABLE */ &&
+            ((el: Element) => {
+              if (isBrowser) {
+                queueMicrotask(() => {
+                  const internalData = internalState.value;
+
+                  if (internalData && !internalData.dispose) {
+                    internalData.setQwikifyProps(props);
+                    internalData.dispose = render(
+                      () =>
+                        mainExactProps(
+                          slotRef.value,
+                          scopeId,
+                          internalData.cmp,
+                          internalData.wrappedProps
+                        ),
+                      el
+                    );
+                  }
+                });
+              } else {
+                hostRef.value = el;
+              }
+            })
+          }
         >
           {SkipRender}
         </TagName>

@@ -1,6 +1,17 @@
 import { $, useOn, useOnDocument, useSignal } from '@builder.io/qwik';
 import { isServer } from '@builder.io/qwik/build';
-import { Component, createContext, createElement, createRef } from 'react';
+import { createContext, onMount, sharedConfig, useContext } from 'solid-js';
+import {
+  createComponent,
+  mergeProps,
+  ssr,
+  ssrHydrationKey,
+  ssrAttribute,
+  escape,
+  effect,
+  className,
+  template,
+} from 'solid-js/web';
 import type { QwikifyOptions, QwikifyProps } from './types';
 
 interface SlotState {
@@ -10,44 +21,40 @@ interface SlotState {
 }
 const SlotCtx = createContext<SlotState>({ scopeId: '' });
 
-export function main(slotEl: Element | undefined, scopeId: string, RootCmp: any, props: any) {
-  const newProps = getReactProps(props);
-  return mainExactProps(slotEl, scopeId, RootCmp, newProps);
-}
-
 export function mainExactProps(
   slotEl: Element | undefined,
   scopeId: string,
   RootCmp: any,
   props: any
 ) {
-  return createElement(SlotCtx.Provider, {
+  return createComponent(SlotCtx.Provider, {
     value: {
       el: slotEl,
       scopeId,
       attachedEl: undefined,
     },
-    children: createElement(RootCmp, {
-      ...props,
-      children: createElement(SlotElement, null),
-    }),
+    get children() {
+      return createComponent(
+        RootCmp,
+        mergeProps(props, {
+          get children() {
+            return createComponent(SlotElement as (props: {}) => Element, {});
+          },
+        })
+      );
+    },
   });
 }
 
-export class SlotElement extends Component {
-  static contextType = SlotCtx;
-  declare context: React.ContextType<typeof SlotCtx>;
+const _tmpl$ = isServer ? (undefined as never) : template(`<q-slotc><!--SLOT-->`);
 
-  slotC = createRef<Element>();
+const SlotElement = () => {
+  const context = useContext(SlotCtx);
+  let slotC: Element | undefined;
 
-  shouldComponentUpdate(): boolean {
-    return false;
-  }
-
-  componentDidMount(): void {
-    const slotC = this.slotC.current;
+  onMount(() => {
     if (slotC) {
-      const { attachedEl, el } = this.context;
+      const { attachedEl, el } = context;
       if (el) {
         if (!attachedEl) {
           slotC.appendChild(el);
@@ -56,24 +63,34 @@ export class SlotElement extends Component {
         }
       }
     }
-  }
+  });
 
-  render() {
-    return createElement('q-slotc', {
-      class: this.context.scopeId,
-      suppressHydrationWarning: true,
-      dangerouslySetInnerHTML: { __html: '<!--SLOT-->' },
-      ref: this.slotC,
-    });
-  }
-}
+  // Solid components are compiled differently for server and client
+  return isServer
+    ? ssr(
+        ['<q-slotc', '', '><!--SLOT--></q-slotc>'],
+        ssrHydrationKey(),
+        // @ts-expect-error
+        ssrAttribute('class', escape(context.scopeId, true), false)
+      )
+    : (() => {
+        if (sharedConfig.context) {
+          return context.el?.querySelector('q-slotc');
+        } else {
+          const _el$ = _tmpl$();
+          slotC = _el$;
+          effect(() => className(_el$, context.scopeId));
+          return _el$;
+        }
+      })();
+};
 
-export const getReactProps = (props: Record<string, any>): Record<string, any> => {
-  const obj: Record<string, any> = {};
+export const getSolidProps = <PROPS extends {}>(props: QwikifyProps<PROPS>): PROPS => {
+  const obj: any = {};
   Object.keys(props).forEach((key) => {
     if (!key.startsWith('client:') && !key.startsWith(HOST_PREFIX)) {
       const normalizedKey = key.endsWith('$') ? key.slice(0, -1) : key;
-      obj[normalizedKey] = props[key];
+      obj[normalizedKey] = props[key as keyof QwikifyProps<PROPS>];
     }
   });
   return obj;

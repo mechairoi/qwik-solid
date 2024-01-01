@@ -1,11 +1,4 @@
-/** @jsxImportSource react */
+import { qwikify$ } from '../solid/qwikify';
+import { Motion } from 'solid-motionone';
 
-import { qwikify$ } from '../react/qwikify';
-
-export const App = qwikify$(() => {
-  return (
-    <>
-      <div>hola</div>
-    </>
-  );
-});
+export const MotionButton = qwikify$(Motion.button);

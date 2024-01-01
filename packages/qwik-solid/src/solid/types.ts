@@ -1,10 +1,12 @@
-import type { PropFunction, Signal } from '@builder.io/qwik';
-import type { FunctionComponent } from 'react';
-import type { Root } from 'react-dom/client';
+import type { PropFunction } from '@builder.io/qwik';
+import type { Component, Signal } from 'solid-js';
+import type { Store } from 'solid-js/store';
 
-export interface Internal<PROPS> {
-  root: Root | undefined;
-  cmp: FunctionComponent<PROPS>;
+export interface Internal<PROPS extends {}> {
+  dispose: (() => void) | undefined;
+  cmp: Component<PROPS>;
+  setQwikifyProps: (props: QwikifyProps<PROPS>) => void;
+  wrappedProps: Store<PROPS>;
 }
 
 export interface QwikifyBase {
@@ -56,25 +58,25 @@ export interface QwikifyBase {
 
   /**
    * Adds a `click` event listener to the host element, this event will be dispatched even if the
-   * react component is not hydrated.
+   * solid component is not hydrated.
    */
   'host:onClick$'?: PropFunction<(ev: Event) => void>;
 
   /**
    * Adds a `blur` event listener to the host element, this event will be dispatched even if the
-   * react component is not hydrated.
+   * solid component is not hydrated.
    */
   'host:onBlur$'?: PropFunction<(ev: Event) => void>;
 
   /**
    * Adds a `focus` event listener to the host element, this event will be dispatched even if the
-   * react component is not hydrated.
+   * solid component is not hydrated.
    */
   'host:onFocus$'?: PropFunction<(ev: Event) => void>;
 
   /**
    * Adds a `mouseover` event listener to the host element, this event will be dispatched even if
-   * the react component is not hydrated.
+   * the solid component is not hydrated.
    */
   'host:onMouseOver$'?: PropFunction<(ev: Event) => void>;
 

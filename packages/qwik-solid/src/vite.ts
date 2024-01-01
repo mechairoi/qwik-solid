@@ -1,15 +1,9 @@
-export function qwikReact(): any {
-  const OPTIMIZE_DEPS = [
-    'react',
-    'react-dom',
-    'react-dom/client',
-    'react/jsx-runtime',
-    'react/jsx-dev-runtime',
-  ];
-  const DEDUPE = ['react', 'react-dom'];
+export function qwikSolid(): any {
+  const OPTIMIZE_DEPS = ['solid-js', 'solid-js/web'];
+  const DEDUPE = ['solid-js', 'solid-js/web'];
 
   return {
-    name: 'vite-plugin-qwik-react',
+    name: 'vite-plugin-qwik-solid',
     config() {
       return {
         resolve: {

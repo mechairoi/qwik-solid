@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { qwikVite } from '@builder.io/qwik/optimizer';
+import dts from 'vite-plugin-dts';
 
 export default defineConfig(() => {
   return {
@@ -12,16 +13,9 @@ export default defineConfig(() => {
         fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'mjs' : 'cjs'}`,
       },
       rollupOptions: {
-        external: [
-          'react',
-          'react/jsx-runtime',
-          'react/jsx-dev-runtime',
-          'react-dom',
-          'react-dom/client',
-          'react-dom/server',
-        ],
+        external: ['solid-js', 'solid-js/web'],
       },
     },
-    plugins: [qwikVite()],
+    plugins: [qwikVite(), dts()],
   };
 });

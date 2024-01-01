@@ -1,11 +1,11 @@
 import { type QRL, type Signal, Slot, SSRRaw, SSRStream } from '@builder.io/qwik';
-import { getHostProps, mainExactProps, getReactProps } from './slot';
-import { renderToString } from 'react-dom/server';
+import { getHostProps, mainExactProps, getSolidProps } from './slot';
+import { renderToString } from 'solid-js/web';
 import { isServer } from '@builder.io/qwik/build';
 
 export async function renderFromServer(
   Host: any,
-  reactCmp$: QRL<any>,
+  solidCmp$: QRL<any>,
   scopeId: string,
   props: Record<string, any>,
   ref: Signal<Element | undefined>,
@@ -13,11 +13,13 @@ export async function renderFromServer(
   hydrationProps: Record<string, any>
 ) {
   if (isServer) {
-    const Cmp = await reactCmp$.resolve();
+    const Cmp = await solidCmp$.resolve();
 
-    const newProps = getReactProps(props);
+    const newProps = getSolidProps(props);
     Object.assign(hydrationProps, newProps);
-    const html = renderToString(mainExactProps(undefined, scopeId, Cmp, newProps));
+    const html = renderToString(() => {
+      return mainExactProps(undefined, scopeId, Cmp, newProps);
+    });
     const index = html.indexOf('<!--SLOT-->');
     if (index > 0) {
       const part1 = html.slice(0, index);
