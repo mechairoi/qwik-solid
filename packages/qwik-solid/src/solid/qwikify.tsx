@@ -33,6 +33,22 @@ export function qwikifyQrl<PROPS extends {}>(
     const [signal, isClientOnly] = useWakeupSignal(props, opts);
     const hydrationKeys = {};
     const TagName = opts?.tagName ?? ('qwik-solid' as any);
+    const hydrated = useSignal<boolean>(false);
+
+    useTask$(({ track, cleanup }) => {
+      track(hydrated);
+      if (!isBrowser) {
+        return;
+      }
+      if (hydrated.value) {
+        cleanup(() => {
+          if (internalState.value) {
+            internalState.value.dispose?.();
+            internalState.value.dispose = undefined;
+          }
+        });
+      }
+    });
 
     // Task takes cares of updates and partial hydration
     useTask$(async ({ track }) => {
@@ -63,6 +79,7 @@ export function qwikifyQrl<PROPS extends {}>(
               () => mainExactProps(slotRef.value, scopeId, Cmp, wrappedProps),
               hostElement
             );
+            hydrated.value = true;
           } else {
             setProps(hydrationKeys as PROPS);
 
@@ -75,6 +92,7 @@ export function qwikifyQrl<PROPS extends {}>(
               () => mainExactProps(slotRef.value, scopeId, Cmp, wrappedProps),
               hostElement
             );
+            hydrated.value = true;
           }
 
           if (isClientOnly || signal.value === false) {
@@ -127,6 +145,7 @@ export function qwikifyQrl<PROPS extends {}>(
                         ),
                       el
                     );
+                    hydrated.value = true;
                   }
                 });
               } else {
