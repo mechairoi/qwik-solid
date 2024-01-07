@@ -58,7 +58,13 @@ export default defineConfig(() => {
        // `vite-plugin-solid` must be placed before `qwikCity` and `qwikVite`
        solid({ include:'./src/integrations/solid/**', ssr: true }),
        qwikCity(),
-       qwikVite(),
+       qwikVite({
+        // The default `entryStrategy: smart` does not transform jsx of solid at build time, so you must specify this.
+        entryStrategy:
+          config.command === "build" || config.command === "serve"
+            ? { type: config.isSsrBuild ? "hoist" : "hook" }
+            : undefined,
+      }),
        qwikSolid(),
      ],
    };
